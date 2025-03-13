@@ -1,0 +1,21 @@
+{
+  "name": "csv-image-processing",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PiyushBadhe/csv-image-processing.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/PiyushBadhe/csv-image-processing/issues"
+  },
+  "homepage": "https://github.com/PiyushBadhe/csv-image-processing#readme"
+}
