@@ -1,21 +1,32 @@
 {
   "name": "csv-image-processing",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "",
-  "main": "index.js",
+  "main": "server.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "ts-node -r tsconfig-paths/register src/server.ts"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/PiyushBadhe/csv-image-processing.git"
   },
   "keywords": [],
-  "author": "",
+  "author": "https://github.com/PiyushBadhe",
   "license": "ISC",
   "type": "commonjs",
   "bugs": {
     "url": "https://github.com/PiyushBadhe/csv-image-processing/issues"
   },
-  "homepage": "https://github.com/PiyushBadhe/csv-image-processing#readme"
+  "homepage": "https://github.com/PiyushBadhe/csv-image-processing#readme",
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "tsconfig-paths": "^4.2.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.13.10",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.2"
+  }
 }
