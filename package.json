@@ -4,7 +4,9 @@
   "description": "",
   "main": "server.ts",
   "scripts": {
-    "start": "ts-node -r tsconfig-paths/register src/server.ts"
+    "prestart": "npm i && ts-node -r tsconfig-paths/register config/create-database.ts",
+    "start": "ts-node -r tsconfig-paths/register src/server.ts",
+    "dev": "nodemon --exec ts-node -r tsconfig-paths/register src/server.ts"
   },
   "repository": {
     "type": "git",
@@ -19,13 +21,22 @@
   },
   "homepage": "https://github.com/PiyushBadhe/csv-image-processing#readme",
   "dependencies": {
+    "csv-parser": "^3.2.0",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "multer": "^1.4.5-lts.1",
+    "nodemon": "^3.1.9",
+    "pg": "^8.14.0",
+    "sequelize": "^6.37.6",
+    "sequelize-typescript": "^2.1.6",
+    "short-unique-id": "^5.2.0",
     "tsconfig-paths": "^4.2.0"
   },
   "devDependencies": {
     "@types/express": "^5.0.0",
+    "@types/multer": "^1.4.12",
     "@types/node": "^22.13.10",
+    "@types/pg": "^8.11.11",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.2"
   }

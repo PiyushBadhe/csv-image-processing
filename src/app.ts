@@ -1,5 +1,8 @@
+import CsvRouter from "@routes/csvRouter";
 import IndexRouter from "@routes/IndexRouter";
 import express, { Request, Response, NextFunction } from "express";
+import SequelizeDatabase from "@config/sequelize";
+import AppUtils from "@utils/appUtils";
 
 class App {
   public app: express.Application;
@@ -12,8 +15,9 @@ class App {
   }
 
   private initializeApp(): void {
-    this.app.use("/public", express.static("public"));
+    this.app.use("/public/uploads", express.static("uploads"));
     this.app.use("/public/images", express.static("images"));
+    SequelizeDatabase.connect(); // Initialize sequelize instance method to establish the database connection
   }
 
   private configureMiddleware(): void {
@@ -23,7 +27,7 @@ class App {
 
     // Logging for each request
     this.app.use((req: Request, _res: Response, next: NextFunction) => {
-      console.debug(`${req.method} ${req.url}`);
+      console.debug(AppUtils.colorText.cyan(`${req.method} ${req.url}`));
       next();
     });
   }
@@ -32,10 +36,12 @@ class App {
     const routes = this.routesInstantiations;
 
     this.app.use("/", routes.index); // Home routes
+    this.app.use("/csv", routes.csv); // CSV routes
   }
 
   private routesInstantiations = {
     index: new IndexRouter().getRoutes(),
+    csv: new CsvRouter().getRoutes(),
   };
 
   private errorHandler = (
@@ -44,7 +50,7 @@ class App {
     res: Response,
     next: NextFunction
   ): void => {
-    console.error("Error occurred:", error); // Log the error for debugging
+    console.error(AppUtils.colorText.red(`Error occurred: ${error}`)); // Log the error for debugging
     if (error) {
       res.status(error.statusCode || 500).json({
         message: error.message || "Internal Server Error",
@@ -54,4 +60,4 @@ class App {
   };
 }
 
-export default new App().app; // Export the Express app instance
+export default new App().app;

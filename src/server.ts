@@ -1,23 +1,21 @@
 import app from "./app";
 import http from "http";
 import dotenv from "dotenv";
+import AppUtils from "@utils/appUtils";
 
-dotenv.config(); // Load environment variables
+dotenv.config();
 
 class Server {
   private port: number;
   private server: http.Server;
 
   constructor() {
-    this.port = this.getPort(); // Get port from environment variables or default
-    this.server = http.createServer(app); // Create the HTTP server
+    this.port = this.getPort();
+    this.server = http.createServer(app);
     this.setupApp();
     this.registerEvents();
   }
 
-  /**
-   * Load port from environment variables or set a default value
-   */
   private getPort(): number {
     const port = Number(process.env.EXPRESS_PORT);
     if (isNaN(port))
@@ -47,7 +45,9 @@ class Server {
    */
   public start(): void {
     this.server.listen(this.port, () => {
-      console.log(`Server is running on port ${this.port}`);
+      console.info(
+        AppUtils.colorText.blue(`Server is running on port ${this.port}`)
+      );
     });
   }
 
@@ -63,20 +63,15 @@ class Server {
       typeof this.port === "string" ? `Pipe ${this.port}` : `Port ${this.port}`;
 
     switch (error.code) {
-      case "EACCES": // Error case: Permission denied
-        console.error(`${bind} requires elevated privileges`);
-        process.exit(1); // Exit the process with an error code 1
-        break;
       case "EADDRINUSE": // Error case: Port is already in use
         console.error(`${bind} is already in use`);
-        process.exit(1); // Exit the process with an error code 1
+        process.exit(1);
         break;
       default:
-        throw error; // If it's an unknown error, rethrow it
+        throw error;
     }
   }
 }
 
-// Initialize and start the server
 const server = new Server();
 server.start();

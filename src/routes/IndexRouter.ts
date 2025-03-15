@@ -11,6 +11,10 @@ class IndexRouter {
     this.router.get("/health", (_req: Request, res: Response) => {
       res.send({ message: "Health is Wealth...!" });
     });
+
+    this.router.get("*", (_req: Request, res: Response) => {
+      res.send("Uh Ohh! This route doesn't exist");
+    });
   }
 
   public getRoutes(): Router {
@@ -18,5 +22,4 @@ class IndexRouter {
   }
 }
 
-// Export the router
 export default IndexRouter;
