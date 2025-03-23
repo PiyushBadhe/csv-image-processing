@@ -45,7 +45,7 @@ class SequelizeDatabase {
     try {
       await this.sequelize.authenticate();
       console.info(AppUtils.colorText.blue("Database Connected"));
-      await this.sequelize.sync({ alter: false, force: false });
+      await this.sequelize.sync({ alter: true, force: false });
     } catch (error) {
       console.error(
         AppUtils.colorText.red(`Error connecting to the database: ${error}`)

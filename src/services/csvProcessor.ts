@@ -1,94 +1,231 @@
-import fs from "fs";
+import ProcessedImagesRepo from "@repositories/ProcessedImagesRepo";
+import ImageProcessor from "@services/imageProcessor";
+import { csvHeaders } from "@type/attributes";
+import axios from "axios";
 import csv from "csv-parser";
+import fs from "fs";
+import path from "path";
 
 class CsvServices {
   private normalizedHeaders: Record<string, string> = {};
+  private imageProcessor: ImageProcessor;
+  private processedImageRepo: ProcessedImagesRepo;
+  private urlRegex: RegExp =
+    /^(https?:\/\/)[\w.-]+\.[a-z]{2,}(:\d+)?(\/[^\s]*)?(\?.*)?$/i;
 
-  processCSV = (filePath: string): Promise<Record<string, string>[]> => {
-    return new Promise((resolve, reject) => {
-      const results: Record<string, string>[] = [];
+  constructor() {
+    this.imageProcessor = new ImageProcessor();
+    this.processedImageRepo = new ProcessedImagesRepo();
+  }
 
-      fs.createReadStream(filePath)
-        .pipe(csv())
-        .on("data", (data) => results.push(data))
-        .on("end", () => {
-          resolve(results);
-        })
-        .on("error", (error) => {
-          reject(new Error(`Error processing CSV: ${error.message}`));
-        });
-    });
-  };
+  private normalizeHeaders(headers: string[]): void {
+    this.normalizedHeaders = headers.reduce(
+      (data: Record<string, string>, header: string) => {
+        data[header.toLowerCase()] = header;
+        return data;
+      },
+      {} as Record<string, string>
+    );
+  }
 
-  validateCSVHeaders = (
+  async validateCSVHeaders(
     filePath: string,
     requiredHeaders: string[]
-  ): Promise<boolean> => {
+  ): Promise<boolean> {
     return new Promise((resolve, reject) => {
-      const stream = fs
-        .createReadStream(filePath)
-        .pipe(csv())
+      const stream = fs.createReadStream(filePath).pipe(csv());
+
+      stream
         .on("headers", (headers: string[]) => {
+          this.normalizeHeaders(headers);
           const lowerCaseHeaders = headers.map((header) =>
             header.trim().toLowerCase()
           );
+
           const isValid = requiredHeaders.every((reqHeader) =>
             lowerCaseHeaders.includes(reqHeader)
           );
-          stream.destroy(); // Stopped reading after headers
+
           resolve(isValid);
+          stream.destroy();
         })
         .on("error", (error) => reject(error));
     });
-  };
+  }
 
-  validateImageURLs = (
-    filePath: string
-  ): Promise<{ allValid: boolean; invalidProducts: object[] }> => {
+  async exploreCSV(filePath: string): Promise<Record<string, string>[]> {
+    return this.parseCSV(filePath);
+  }
+
+  private parseCSV(filePath: string): Promise<Record<string, string>[]> {
     return new Promise((resolve, reject) => {
-      const urlRegex =
-        /^(https?:\/\/)[\w.-]+\.[a-z]{2,}(:\d+)?(\/[^\s]*)?(\?.*)?$/i;
-      let allValid = true;
-      const invalidProducts: object[] = [];
+      const results: Record<string, string>[] = [];
+      fs.createReadStream(filePath)
+        .pipe(csv())
+        .on("data", (data) => results.push(data))
+        .on("end", () => resolve(results))
+        .on("error", (error) =>
+          reject(new Error(`Error processing CSV: ${error.message}`))
+        );
+    });
+  }
+
+  async validateImageURLs(filePath: string): Promise<object[]> {
+    const requiredHeaders = csvHeaders;
+    const isValid = await this.validateCSVHeaders(
+      filePath,
+      Array.from(requiredHeaders)
+    );
+
+    if (!isValid)
+      throw new Error("CSV file does not contain the required headers.");
+
+    const invalidProducts: object[] = [];
+
+    return new Promise((resolve, reject) => {
+      fs.createReadStream(filePath)
+        .pipe(csv())
+        .on("data", (row) => {
+          const productName =
+            row[this.normalizedHeaders["product name"]]?.trim();
+          const serialNumber = row[this.normalizedHeaders["s. no."]];
+          const imageUrls = row[this.normalizedHeaders["input image urls"]]
+            ?.split(",")
+            .map((url: string) => url.trim());
+
+          const invalidUrls = imageUrls.filter(
+            (url: string) => !this.urlRegex.test(url)
+          );
+
+          if (invalidUrls.length > 0) {
+            invalidProducts.push({
+              "Sr. No.": serialNumber,
+              "Product Name": productName,
+              "Invalid Image URL(s)": invalidUrls.join(", "),
+            });
+          }
+        })
+        .on("end", () => resolve(invalidProducts))
+        .on("error", (error) => reject(error));
+    });
+  }
+
+  async processImageURLs(
+    filePath: string,
+    inputFileName: string,
+    requestId: string
+  ): Promise<{ processed: boolean; processedFileName: string }> {
+    const requiredHeaders = csvHeaders;
+    const isValid = await this.validateCSVHeaders(
+      filePath,
+      Array.from(requiredHeaders)
+    );
+
+    if (!isValid)
+      throw new Error("CSV file does not contain the required headers.");
+
+    return new Promise((resolve, reject) => {
+      const collectedData: string[][] = [];
+      let headersCollected = false;
+
+      const outputDirectory = path.join(
+        __dirname,
+        "../../public/processed files"
+      );
+      if (!fs.existsSync(outputDirectory)) {
+        fs.mkdirSync(outputDirectory, { recursive: true });
+      }
+      const outputFileName = `${Date.now()}-processed-${inputFileName}`;
+      const outputFilePath = path.join(outputDirectory, outputFileName);
+
+      const processingTasks: Promise<void>[] = [];
 
       fs.createReadStream(filePath)
         .pipe(csv())
-        .on("headers", (headers) => {
-          // Normalized column names by converting them to lowercase
-          this.normalizedHeaders = headers.reduce(
-            (data: Record<string, string>, header: string) => {
-              data[header.toLowerCase()] = header;
-              return data;
-            },
-            {} as Record<string, string>
-          );
-        })
         .on("data", (row) => {
-          // Using normalized column names
-          const productName =
-            row[this.normalizedHeaders["product name"]]?.trim() ||
-            "Unknown Product";
-          const serialNumber = row[this.normalizedHeaders["s. no."]];
-          const imageUrls =
-            row[this.normalizedHeaders["input image urls"]]
-              ?.split(",")
-              .map((url: string) => url.trim()) || [];
-
-          // Checking if any URL is invalid
-          const hasInvalidURL = imageUrls.some(
-            (url: string) => !urlRegex.test(url)
-          );
-          if (hasInvalidURL) {
-            const sNo = `S. No.: ${serialNumber} &&`;
-            const pName = `Product Name: ${productName}`;
-            invalidProducts.push({ product: `${sNo} ${pName}` });
-            allValid = false;
+          if (!headersCollected) {
+            collectedData.push([...Object.keys(row), "Output Image URLs"]);
+            headersCollected = true;
           }
+
+          const serialNumber = parseInt(
+            row[this.normalizedHeaders["s. no."]],
+            10
+          );
+          const productName =
+            row[this.normalizedHeaders["product name"]]?.trim();
+          const inputImageUrls = row[this.normalizedHeaders["input image urls"]]
+            ?.split(",")
+            .map((url: string) => url.trim());
+
+          const validUrls = inputImageUrls.filter((url: string) =>
+            this.urlRegex.test(url)
+          );
+          const outputImageUrls: string[] = [];
+
+          const imageProcessingTask = Promise.all(
+            validUrls.map(async (url: string) => {
+              const newImageName = await this.imageProcessor.compressImage(url);
+              const newImageUrl = `${process.env.PUBLIC_IMAGE_URL}/${newImageName}`;
+              outputImageUrls.push(newImageUrl);
+
+              await this.processedImageRepo.insert({
+                product_name: productName,
+                image_url: newImageUrl,
+              });
+            })
+          ).then(() => {
+            collectedData.push([
+              serialNumber.toString(),
+              productName,
+              inputImageUrls.join(", "),
+              outputImageUrls.join(", "),
+            ]);
+          });
+
+          processingTasks.push(imageProcessingTask);
         })
-        .on("end", () => resolve({ allValid, invalidProducts }))
+        .on("end", async () => {
+          await Promise.all(processingTasks);
+
+          const sortedData = collectedData.slice(1).sort((a, b) => {
+            return parseInt(a[0], 10) - parseInt(b[0], 10);
+          });
+
+          const mergedData = [collectedData[0], ...sortedData];
+
+          const csvContent = mergedData
+            .map((row) => row.map((value) => `"${value}"`).join(","))
+            .join("\n");
+
+          fs.writeFileSync(outputFilePath, csvContent, "utf8");
+          const response = {
+            processed: true,
+            processedFileName: outputFileName,
+          };
+          await this.triggerWebhookNotification(
+            `${process.env.WEBHOOK_URL!}?id=${requestId}`,
+            { response, headers: collectedData[0], processedData: sortedData }
+          );
+
+          resolve(response);
+        })
         .on("error", (error) => reject(error));
     });
-  };
+  }
+
+  private async triggerWebhookNotification(webhookUrl: string, data: object) {
+    try {
+      await axios.post(webhookUrl, data, {
+        headers: { "Content-Type": "application/json" },
+      });
+      console.log("Webhook triggered successfully!");
+    } catch (error) {
+      console.error("Failed to send webhook:", error);
+    }
+  }
+
+  public static webhookDataStore = new Map<string, any>(); // Store webhook data in-memory
 }
 
-export default new CsvServices();
+export default CsvServices;

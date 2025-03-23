@@ -16,6 +16,11 @@ class CsvRouter {
       this.controller.upload.single("file"),
       this.controller.csvUpload.bind(this.controller)
     );
+    this.router.get("/", this.controller.getByName.bind(this.controller));
+    this.router.get(
+      "/status",
+      this.controller.fetchProcessStatus.bind(this.controller)
+    );
   }
 
   public getRoutes(): Router {

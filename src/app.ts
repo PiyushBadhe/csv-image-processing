@@ -1,12 +1,13 @@
 import CsvRouter from "@routes/csvRouter";
-import IndexRouter from "@routes/IndexRouter";
+import ThirdPartyRouter from "@routes/ThirdPartyRouter";
 import express, { Request, Response, NextFunction } from "express";
 import SequelizeDatabase from "@config/sequelize";
 import AppUtils from "@utils/appUtils";
+import path from "path";
 
 class App {
   public app: express.Application;
-
+  private publicDirectoryPath: string = path.join(__dirname, "../public");
   constructor() {
     this.app = express();
     this.initializeApp();
@@ -15,8 +16,18 @@ class App {
   }
 
   private initializeApp(): void {
-    this.app.use("/public/uploads", express.static("uploads"));
-    this.app.use("/public/images", express.static("images"));
+    this.app.use(
+      "/public/images",
+      express.static(path.join(this.publicDirectoryPath, "images"))
+    );
+    this.app.use(
+      "/public/processed files",
+      express.static(path.join(this.publicDirectoryPath, "processed"))
+    );
+    this.app.use(
+      "/public/uploads",
+      express.static(path.join(this.publicDirectoryPath, "uploads"))
+    );
     SequelizeDatabase.connect(); // Initialize sequelize instance method to establish the database connection
   }
 
@@ -35,12 +46,12 @@ class App {
   private initializeRoutes(): void {
     const routes = this.routesInstantiations;
 
-    this.app.use("/", routes.index); // Home routes
+    this.app.use("/", routes.thirdParty); // Third-Party routes
     this.app.use("/csv", routes.csv); // CSV routes
   }
 
   private routesInstantiations = {
-    index: new IndexRouter().getRoutes(),
+    thirdParty: new ThirdPartyRouter().getRoutes(),
     csv: new CsvRouter().getRoutes(),
   };
 

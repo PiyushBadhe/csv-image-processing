@@ -29,6 +29,9 @@
       "@models/*": [
         "models/*"
       ],
+      "@DTO/*": [
+        "DTO/*"
+      ],
       "@repositories/*": [
         "repositories/*"
       ],
@@ -40,6 +43,12 @@
       ],
       "@utils/*": [
         "shared/utils/*"
+      ],
+      "@type/*": [
+        "shared/types/*"
+      ],
+      "@enums/*": [
+        "shared/enums/*"
       ]
     }
   }

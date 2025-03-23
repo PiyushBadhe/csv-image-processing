@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Processed CSV File Data</title>
+    <style>
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+      }
+      th,
+      td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: left;
+      }
+      th {
+        background-color: #f4f4f4;
+      }
+      a {
+        color: #007bff;
+        text-decoration: none;
+        margin-right: 5px;
+      }
+      a:hover {
+        text-decoration: underline;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>
+      Processed Data for Process Request ID:
+      <span style="color: red" id="processId"></span>
+    </h1>
+
+    <h4>
+      Process Status:
+      <span id="processStatus"></span>
+    </h4>
+    <h4>
+      Processed File Name:
+      <span id="processedFile"></span>
+    </h4>
+
+    <table>
+      <thead>
+        <tr id="table-headers"></tr>
+      </thead>
+      <tbody id="table-body"></tbody>
+    </table>
+    <script>
+      const urlParams = new URLSearchParams(window.location.search);
+      const processId = urlParams.get("id");
+      document.getElementById("processId").textContent = processId;
+
+      const webhookData = __WEBHOOK_DATA__;
+
+      document.addEventListener("DOMContentLoaded", function () {
+        if (
+          !webhookData ||
+          !webhookData.headers ||
+          !webhookData.processedData
+        ) {
+          document.body.innerHTML = `<h1 style="color: red;">No data available</h1>`;
+          return;
+        }
+
+        const headers = webhookData.headers;
+        const processedData = webhookData.processedData;
+        const processStatus = webhookData.processed;
+        const processedFileName = webhookData.processedFile;
+
+        document.getElementById("processStatus").textContent = processStatus;
+        document.getElementById("processedFile").textContent =
+          processedFileName;
+
+        // Populate headers
+        const headerRow = document.getElementById("table-headers");
+        headers.forEach((header) => {
+          const th = document.createElement("th");
+          th.textContent = header;
+          headerRow.appendChild(th);
+        });
+
+        // Populate table body
+        const tableBody = document.getElementById("table-body");
+        processedData.forEach((rowData) => {
+          const row = document.createElement("tr");
+          rowData.forEach((cellData, index) => {
+            const cell = document.createElement("td");
+            if ((headers[index] || "").toLowerCase().includes("url")) {
+              const urls = cellData.split(",");
+              urls.forEach((url) => {
+                const link = document.createElement("a");
+                link.href = url.trim();
+                link.target = "_blank";
+                link.textContent = url.trim();
+                cell.appendChild(link);
+                cell.appendChild(document.createElement("br"));
+              });
+            } else {
+              cell.textContent = cellData;
+            }
+            row.appendChild(cell);
+          });
+          tableBody.appendChild(row);
+        });
+      });
+    </script>
+  </body>
+</html>
