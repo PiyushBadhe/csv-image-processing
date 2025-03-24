@@ -20,20 +20,59 @@ class ImageProcessor {
 
       const urlParts = new URL(imageUrl);
       const originalFilename = path.basename(urlParts.pathname);
-
-      const ext = path.extname(originalFilename);
+      const ext: string = path.extname(originalFilename);
       const baseName = path.basename(originalFilename, ext);
       const newFilename = `${baseName}_processed${ext}`;
 
+      // Create output directory if not exists
       const outputDirectory = path.join(__dirname, "../../public/images");
       if (!fs.existsSync(outputDirectory)) {
-        fs.mkdirSync(outputDirectory, { recursive: false });
+        fs.mkdirSync(outputDirectory, { recursive: true });
       }
+
       const outputFilePath = path.join(outputDirectory, newFilename);
 
-      const compressedImage = await sharp(imageBuffer)
-        .jpeg({ quality: 50 })
-        .toBuffer();
+      // Image format
+      const metadata = await sharp(imageBuffer).metadata();
+      let compressedImage: Buffer;
+
+      const newWidth = metadata?.width
+        ? Math.floor(metadata.width / 2)
+        : undefined;
+
+      // Format-specific compression
+      switch (metadata.format) {
+        case "jpeg":
+        case "jpg":
+          compressedImage = await sharp(imageBuffer)
+            .resize({ width: newWidth })
+            .jpeg({ quality: 50, force: true })
+            .toBuffer();
+          break;
+        case "png":
+          compressedImage = await sharp(imageBuffer)
+            .resize({ width: newWidth })
+            .png({
+              quality: 50,
+              compressionLevel: 9,
+              effort: 10,
+              force: true,
+            })
+            .toBuffer();
+          break;
+        case "webp":
+          compressedImage = await sharp(imageBuffer)
+            .resize({ width: newWidth })
+            .webp({ quality: 50, effort: 10, force: true })
+            .toBuffer();
+          break;
+        default:
+          compressedImage = await sharp(imageBuffer)
+            .resize({ width: newWidth })
+            .webp({ quality: 50, effort: 10, force: true })
+            .toBuffer();
+          break;
+      }
 
       fs.writeFileSync(outputFilePath, compressedImage);
       return newFilename;

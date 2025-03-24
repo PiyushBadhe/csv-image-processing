@@ -4,3 +4,4 @@ uploads
 local
 processed files
 images
+.env.development
