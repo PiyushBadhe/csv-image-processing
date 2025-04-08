@@ -2,10 +2,6 @@ import ProcessedCsvDetails from "@models/ProcessedCsvDetails";
 import { csvDetails } from "@type/attributes";
 
 class ProcessedCsvRepo {
-  async retrieveByName(csvName: string): Promise<ProcessedCsvDetails | null> {
-    return (await ProcessedCsvDetails.findByPk(csvName)) ?? null;
-  }
-
   async newCsvUpload(csvAttributes: csvDetails): Promise<void> {
     await ProcessedCsvDetails.create(csvAttributes);
   }
