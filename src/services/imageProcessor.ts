@@ -40,18 +40,22 @@ class ImageProcessor {
         ? Math.floor(metadata.width / 2)
         : undefined;
 
+      const newHeight = metadata?.height
+        ? Math.floor(metadata.height / 2)
+        : undefined;
+
       // Format-specific compression
       switch (metadata.format) {
         case "jpeg":
         case "jpg":
           compressedImage = await sharp(imageBuffer)
-            .resize({ width: newWidth })
+            .resize({ width: newWidth, height: newHeight })
             .jpeg({ quality: 50, force: true })
             .toBuffer();
           break;
         case "png":
           compressedImage = await sharp(imageBuffer)
-            .resize({ width: newWidth })
+            .resize({ width: newWidth, height: newHeight })
             .png({
               quality: 50,
               compressionLevel: 9,
@@ -61,14 +65,9 @@ class ImageProcessor {
             .toBuffer();
           break;
         case "webp":
-          compressedImage = await sharp(imageBuffer)
-            .resize({ width: newWidth })
-            .webp({ quality: 50, effort: 10, force: true })
-            .toBuffer();
-          break;
         default:
           compressedImage = await sharp(imageBuffer)
-            .resize({ width: newWidth })
+            .resize({ width: newWidth, height: newHeight })
             .webp({ quality: 50, effort: 10, force: true })
             .toBuffer();
           break;

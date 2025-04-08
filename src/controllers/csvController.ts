@@ -2,7 +2,7 @@ import { ProcessedCsvDetailsDTO } from "@DTO/ProcessedCsvDetailsDTO";
 import HttpStatus from "@enums/response";
 import ProcessedCsvRepo from "@repositories/ProcessedCsvRepo";
 import CsvServices from "@services/csvProcessor";
-import { csvDetails, csvHeaders, ProcessStatus } from "@type/attributes";
+import { csvHeaders } from "@type/attributes";
 import GenericApiResponse from "@utils/apiResponse";
 import AppUtils from "@utils/appUtils";
 import { Request, Response } from "express";
@@ -31,6 +31,9 @@ class CsvController {
     if (!req.file)
       return GenericApiResponse.sendFailure(res, "No file uploaded");
 
+    if (req.file.mimetype !== "text/csv")
+      return GenericApiResponse.sendFailure(res, "Uploaded file is not a CSV.");
+
     const filePath = req.file.path;
     const originalFileName = req.file.originalname;
     const requiredHeaders = csvHeaders;
@@ -52,20 +55,18 @@ class CsvController {
           filePath,
           Array.from(requiredHeaders)
         );
-        if (!headersValid) {
-          await this.updateProcessStatus(processRequestId, "failed");
+        if (!headersValid)
           return GenericApiResponse.sendFailure(
             res,
             "Invalid CSV headers.",
             HttpStatus.CONFLICT
           );
-        }
 
         const invalidProducts = await this.csvServices.validateImageURLs(
           filePath
         );
 
-        await this.saveCsvDetails(
+        await this.csvServices.saveCsvDetails(
           originalFileName,
           processRequestId,
           "processing",
@@ -81,66 +82,20 @@ class CsvController {
           );
 
         if (isProcessed) {
-          return await this.updateProcessStatus(
+          return await this.csvServices.updateProcessStatus(
             processRequestId,
             "completed",
             processedFileName
           );
         }
 
-        await this.updateProcessStatus(processRequestId, "failed");
+        await this.csvServices.updateProcessStatus(processRequestId, "failed");
         GenericApiResponse.sendFailure(res, "Image processing failed.");
       } catch (error: any) {
-        await this.updateProcessStatus(processRequestId, "failed");
+        await this.csvServices.updateProcessStatus(processRequestId, "failed");
         GenericApiResponse.sendError(res, error.message);
       }
     })();
-  }
-
-  async getByName(req: Request, res: Response): Promise<void> {
-    try {
-      const requestedCsv = req.query.name as string;
-      if (!requestedCsv)
-        return GenericApiResponse.sendFailure(res, "Invalid CSV name.");
-
-      const data = await this.processedCsvRepo.retrieveByName(requestedCsv);
-      GenericApiResponse.sendSuccess(
-        res,
-        data ?? "No CSV found with the requested name."
-      );
-    } catch (error: any) {
-      GenericApiResponse.sendError(res, error.message);
-    }
-  }
-
-  private async saveCsvDetails(
-    input_csv_name: string,
-    process_id: string,
-    status: string,
-    has_invalid_urls: boolean,
-    invalid_metadata?: object | null
-  ) {
-    const verifiedCsv: csvDetails = {
-      input_csv_name,
-      process_id,
-      status,
-      has_invalid_urls,
-      invalid_metadata,
-    };
-
-    await this.processedCsvRepo.newCsvUpload(verifiedCsv);
-  }
-
-  private async updateProcessStatus(
-    processRequestId: string,
-    status: ProcessStatus,
-    outputFileName?: string
-  ): Promise<void> {
-    await this.processedCsvRepo.updateProcessStatus(
-      processRequestId,
-      status,
-      outputFileName || ""
-    );
   }
 
   async fetchProcessStatus(req: Request, res: Response): Promise<void> {

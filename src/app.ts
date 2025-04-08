@@ -46,8 +46,8 @@ class App {
   private initializeRoutes(): void {
     const routes = this.routesInstantiations;
 
-    this.app.use("/", routes.thirdParty); // Third-Party routes
     this.app.use("/csv", routes.csv); // CSV routes
+    this.app.use("/", routes.thirdParty); // Third-Party routes
   }
 
   private routesInstantiations = {

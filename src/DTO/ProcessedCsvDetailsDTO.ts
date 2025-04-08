@@ -7,7 +7,7 @@ export class ProcessedCsvDetailsDTO {
   message: string;
   warning?: string;
   invalidProductURLs?: object | null;
-  private readonly completed: ProcessStatus = "completed";
+  // private readonly completed: ProcessStatus = "completed";
 
   constructor(
     model: ProcessedCsvDetails,

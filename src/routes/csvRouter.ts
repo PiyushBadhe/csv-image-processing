@@ -1,5 +1,5 @@
-import express, { Router } from "express";
 import CsvController from "@controllers/csvController";
+import express, { Router } from "express";
 
 class CsvRouter {
   private router: Router;
@@ -16,7 +16,6 @@ class CsvRouter {
       this.controller.upload.single("file"),
       this.controller.csvUpload.bind(this.controller)
     );
-    this.router.get("/", this.controller.getByName.bind(this.controller));
     this.router.get(
       "/status",
       this.controller.fetchProcessStatus.bind(this.controller)

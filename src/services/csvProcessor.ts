@@ -1,6 +1,7 @@
+import ProcessedCsvRepo from "@repositories/ProcessedCsvRepo";
 import ProcessedImagesRepo from "@repositories/ProcessedImagesRepo";
 import ImageProcessor from "@services/imageProcessor";
-import { csvHeaders } from "@type/attributes";
+import { csvDetails, ProcessStatus } from "@type/attributes";
 import axios from "axios";
 import csv from "csv-parser";
 import fs from "fs";
@@ -12,10 +13,12 @@ class CsvServices {
   private processedImageRepo: ProcessedImagesRepo;
   private urlRegex: RegExp =
     /^(https?:\/\/)[\w.-]+\.[a-z]{2,}(:\d+)?(\/[^\s]*)?(\?.*)?$/i;
+  private processedCsvRepo: ProcessedCsvRepo;
 
   constructor() {
     this.imageProcessor = new ImageProcessor();
     this.processedImageRepo = new ProcessedImagesRepo();
+    this.processedCsvRepo = new ProcessedCsvRepo();
   }
 
   private normalizeHeaders(headers: string[]): void {
@@ -53,33 +56,7 @@ class CsvServices {
     });
   }
 
-  async exploreCSV(filePath: string): Promise<Record<string, string>[]> {
-    return this.parseCSV(filePath);
-  }
-
-  private parseCSV(filePath: string): Promise<Record<string, string>[]> {
-    return new Promise((resolve, reject) => {
-      const results: Record<string, string>[] = [];
-      fs.createReadStream(filePath)
-        .pipe(csv())
-        .on("data", (data) => results.push(data))
-        .on("end", () => resolve(results))
-        .on("error", (error) =>
-          reject(new Error(`Error processing CSV: ${error.message}`))
-        );
-    });
-  }
-
   async validateImageURLs(filePath: string): Promise<object[]> {
-    const requiredHeaders = csvHeaders;
-    const isValid = await this.validateCSVHeaders(
-      filePath,
-      Array.from(requiredHeaders)
-    );
-
-    if (!isValid)
-      throw new Error("CSV file does not contain the required headers.");
-
     const invalidProducts: object[] = [];
 
     return new Promise((resolve, reject) => {
@@ -115,15 +92,6 @@ class CsvServices {
     inputFileName: string,
     requestId: string
   ): Promise<{ processed: boolean; processedFileName: string }> {
-    const requiredHeaders = csvHeaders;
-    const isValid = await this.validateCSVHeaders(
-      filePath,
-      Array.from(requiredHeaders)
-    );
-
-    if (!isValid)
-      throw new Error("CSV file does not contain the required headers.");
-
     return new Promise((resolve, reject) => {
       const collectedData: string[][] = [];
       let headersCollected = false;
@@ -214,12 +182,41 @@ class CsvServices {
     });
   }
 
+  public async saveCsvDetails(
+    input_csv_name: string,
+    process_id: string,
+    status: string,
+    has_invalid_urls: boolean,
+    invalid_metadata?: object | null
+  ) {
+    const verifiedCsv: csvDetails = {
+      input_csv_name,
+      process_id,
+      status,
+      has_invalid_urls,
+      invalid_metadata,
+    };
+
+    await this.processedCsvRepo.newCsvUpload(verifiedCsv);
+  }
+
+  public async updateProcessStatus(
+    processRequestId: string,
+    status: ProcessStatus,
+    outputFileName?: string
+  ): Promise<void> {
+    await this.processedCsvRepo.updateProcessStatus(
+      processRequestId,
+      status,
+      outputFileName || ""
+    );
+  }
+
   private async triggerWebhookNotification(webhookUrl: string, data: object) {
     try {
       await axios.post(webhookUrl, data, {
         headers: { "Content-Type": "application/json" },
       });
-      console.log("Webhook triggered successfully!");
     } catch (error) {
       console.error("Failed to send webhook:", error);
     }
